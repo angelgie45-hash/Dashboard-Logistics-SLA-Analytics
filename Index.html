@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>Logistics & SLA Performance Dashboard</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5.3+ -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <!-- Leaflet CSS untuk Peta Interaktif -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- DataTables Bootstrap 5 CSS -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+
+  <style>
+    :root {
+      --bs-font-sans-serif: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --bg-surface: #f4f6fa;
+      --card-bg: #ffffff;
+      --card-border: rgba(226, 232, 240, 0.9);
+      --primary-accent: #2563eb;
+      --success-accent: #10b981;
+      --danger-accent: #ef4444;
+      --warning-accent: #f59e0b;
+    }
+
+    body {
+      background-color: var(--bg-surface);
+      color: #1e293b;
+      font-family: var(--bs-font-sans-serif);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Navbar & Header */
+    .top-navbar {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 1030;
+    }
+
+    /* Modern Soft UI Cards */
+    .modern-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .modern-card:hover {
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.07);
+    }
+
+    /* Filter Bar Card Styling */
+    .filter-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.03);
+      padding: 1.15rem 1.35rem;
+    }
+
+    .filter-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 0.45rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .filter-label i {
+      color: #94a3b8;
+      font-size: 0.85rem;
+    }
+
+    .filter-control {
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #1e293b;
+      padding: 0.48rem 0.75rem;
+      background-color: #ffffff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .filter-control:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      outline: none;
+    }
+
+    .btn-reset-modern {
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background-color: #ffffff;
+      color: #475569;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.48rem 1rem;
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-reset-modern:hover {
+      background-color: #f8fafc;
+      border-color: #94a3b8;
+      color: #0f172a;
+    }
+
+    .card-title-modern {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.01em;
+    }
+
+    .card-subtitle-modern {
+      font-size: 0.78rem;
+      color: #64748b;
+    }
+
+    /* KPI Icon Box */
+    .kpi-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+    }
+
+    /* Chart Containers */
+    .chart-wrapper {
+      position: relative;
+      height: 290px;
+      width: 100%;
+    }
+
+    .chart-wrapper-tall {
+      position: relative;
+      height: 480px;
+      width: 100%;
+    }
+
+    .chart-wrapper-wide {
+      position: relative;
+      height: 320px;
+      width: 100%;
+    }
+
+    #slaMap {
+      height: 460px;
+      width: 100%;
+      border-radius: 12px;
+      z-index: 1;
+    }
+
+    /* Leaflet Tooltip Styling */
+    .map-label-tooltip {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #0f172a;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      white-space: nowrap;
+    }
+
+    /* Tabel Ringkasan Samping Peta */
+    .summary-table-container {
+      max-height: 460px;
+      overflow-y: auto;
+    }
+
+    .summary-table-container table {
+      font-size: 0.82rem;
+      margin-bottom: 0;
+    }
+
+    .summary-table-container th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    /* Custom Nav Pills for Top/Bottom Toggle */
+    .nav-pills-modern .nav-link {
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.4rem 0.9rem;
+      border-radius: 8px;
+      color: #64748b;
+      background-color: #f1f5f9;
+      margin-left: 4px;
+      transition: all 0.2s;
+    }
+
+    .nav-pills-modern .nav-link.active.best {
+      background-color: #dcfce7;
+      color: #15803d;
+    }
+
+    .nav-pills-modern .nav-link.active.worst {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+
+    /* Modern Table Styling */
+    .table-modern thead th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .table-modern tbody td {
+      font-size: 0.84rem;
+      vertical-align: middle;
+      color: #334155;
+      border-bottom: 1px solid #f1f5f9;
+      white-space: nowrap;
+    }
+
+    /* Badges */
+    .badge-soft-success {
+      background-color: #dcfce7;
+      color: #15803d;
+      font-weight: 600;
+      padding: 0.35em 0.65em;
+      border-radius: 6px;
+    }
+
+    .badge-soft-danger {
+      background-color: #fee2e2;
+      color: #b91c1c;
+      font-weight: 600;
+      padding: 0.35em 0.65em;
+      border-radius: 6px;
+    }
+
+    .badge-soft-warning {
+      background-color: #fef3c7;
+      color: #b45309;
+      font-weight: 600;
+      padding: 0.35em 0.65em;
+      border-radius: 6px;
+    }
+
+    /* Loading Overlay */
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay">
+    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+    <h6 class="fw-bold text-dark">Memuat Data Operasional & SLA...</h6>
+    <p class="text-muted small">Menghubungkan ke Google Spreadsheets</p>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <nav class="top-navbar py-3 px-4 mb-4">
+    <div class="container-fluid">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-3">
+          <div class="bg-primary text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+            <i class="bi bi-truck fs-5"></i>
+          </div>
+          <div>
+            <h5 class="mb-0 fw-bold text-dark">Logistics & SLA Analytics</h5>
+            <span class="text-muted small">Monitoring Performa Pengiriman, Rute & Vendor</span>
+          </div>
+        </div>
+        <div>
+          <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill fw-medium">
+            <i class="bi bi-database-check text-success me-1"></i> Live Spreadsheet Sync
+          </span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container-fluid px-4 pb-5">
+
+    <!-- Filter Card Bar -->
+    <div class="filter-card mb-4">
+      <div class="row g-3 align-items-end">
+        <!-- Tanggal Awal -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+          <label for="startDate" class="filter-label">
+            <i class="bi bi-calendar-plus"></i> Tanggal Awal
+          </label>
+          <input type="date" id="startDate" class="form-control filter-control">
+        </div>
+
+        <!-- Tanggal Akhir -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+          <label for="endDate" class="filter-label">
+            <i class="bi bi-calendar-check"></i> Tanggal Akhir
+          </label>
+          <input type="date" id="endDate" class="form-control filter-control">
+        </div>
+
+        <!-- Wilayah Tujuan -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+          <label for="filterWilayah" class="filter-label">
+            <i class="bi bi-geo-alt-fill"></i> Wilayah Tujuan
+          </label>
+          <select id="filterWilayah" class="form-select filter-control">
+            <option value="ALL">Semua Wilayah Tujuan</option>
+          </select>
+        </div>
+
+        <!-- Vendor -->
+        <div class="col-12 col-sm-6 col-md-4 col-xl-2">
+          <label for="filterVendor" class="filter-label">
+            <i class="bi bi-building-fill"></i> Vendor
+          </label>
+          <select id="filterVendor" class="form-select filter-control">
+            <option value="ALL">Semua Vendor</option>
+          </select>
+        </div>
+
+        <!-- Status Kendaraan -->
+        <div class="col-12 col-sm-6 col-md-3 col-xl-2">
+          <label for="filterStatusKendaraan" class="filter-label">
+            <i class="bi bi-car-front-fill"></i> Status Kendaraan
+          </label>
+          <select id="filterStatusKendaraan" class="form-select filter-control">
+            <option value="ALL">Semua Status</option>
+          </select>
+        </div>
+
+        <!-- SLA & Reset -->
+        <div class="col-12 col-sm-6 col-md-5 col-xl-2">
+          <div class="row g-2 align-items-end">
+            <div class="col-7">
+              <label for="filterSla" class="filter-label">
+                <i class="bi bi-check2-all"></i> SLA
+              </label>
+              <select id="filterSla" class="form-select filter-control">
+                <option value="ALL">Semua</option>
+                <option value="MET">Tercapai</option>
+                <option value="NOT_MET">Tidak Tercapai</option>
+              </select>
+            </div>
+            <div class="col-5">
+              <button id="btnReset" type="button" class="btn-reset-modern" title="Reset Semua Filter">
+                <i class="bi bi-arrow-clockwise"></i> Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- KPI Summary Row -->
+    <div class="row g-3 mb-4">
+      <div class="col-sm-6 col-xl-3">
+        <div class="modern-card p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-muted small fw-semibold mb-1">TOTAL PENGIRIMAN</p>
+              <h3 class="fw-bold mb-0 text-dark" id="kpiTotalTrip">0</h3>
+              <span class="text-muted" style="font-size: 0.75rem;">Resi tugas tercatat</span>
+            </div>
+            <div class="kpi-icon bg-primary bg-opacity-10 text-primary">
+              <i class="bi bi-box-seam"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-xl-3">
+        <div class="modern-card p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-muted small fw-semibold mb-1">RATA-RATA SLA TERCAPAI</p>
+              <h3 class="fw-bold mb-0 text-success" id="kpiSlaRate">0%</h3>
+              <span class="text-muted" style="font-size: 0.75rem;" id="kpiSlaCount">0 dari 0 tepat waktu</span>
+            </div>
+            <div class="kpi-icon bg-success bg-opacity-10 text-success">
+              <i class="bi bi-check-circle"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-xl-3">
+        <div class="modern-card p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-muted small fw-semibold mb-1">PERSENTASE TIDAK TERCAPAI</p>
+              <h3 class="fw-bold mb-0 text-danger" id="kpiNotMetRate">0%</h3>
+              <span class="text-muted" style="font-size: 0.75rem;" id="kpiNotMetCount">0 dari 0 trip meleset</span>
+            </div>
+            <div class="kpi-icon bg-danger bg-opacity-10 text-danger">
+              <i class="bi bi-exclamation-triangle"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-xl-3">
+        <div class="modern-card p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-muted small fw-semibold mb-1">ARMADA & VENDOR AKTIF</p>
+              <h3 class="fw-bold mb-0 text-dark" id="kpiActiveFleet">0</h3>
+              <span class="text-muted" style="font-size: 0.75rem;" id="kpiVendorCount">0 Vendor beroperasi</span>
+            </div>
+            <div class="kpi-icon bg-warning bg-opacity-10 text-warning">
+              <i class="bi bi-geo-alt"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Doughnut Chart (Wilayah Tujuan) & Pie Chart (Status Kendaraan) -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="modern-card p-4 h-100">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h6 class="card-title-modern mb-1">Distribusi Wilayah Tujuan</h6>
+              <p class="card-subtitle-modern mb-0">Proporsi pengiriman berdasarkan wilayah tujuan (Doughnut Chart)</p>
+            </div>
+            <span class="badge bg-light text-dark border">Wilayah Tujuan</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chartWilayahDoughnut"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="modern-card p-4 h-100">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h6 class="card-title-modern mb-1">Status Kendaraan</h6>
+              <p class="card-subtitle-modern mb-0">Komposisi status operasional armada saat ini (Pie Chart)</p>
+            </div>
+            <span class="badge bg-light text-dark border">Status Kendaraan</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chartStatusPie"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Leaflet Maps Chart (Kiri) & Tabel Ringkasan Samping (Kanan) -->
+    <div class="row g-4 mb-4">
+      <!-- Peta Leaflet (Kiri) -->
+      <div class="col-xl-8">
+        <div class="modern-card p-4 h-100">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+              <h6 class="card-title-modern mb-1"><i class="bi bi-map text-primary me-1"></i> Peta Lokasi Tujuan (% SLA Tercapai)</h6>
+              <p class="card-subtitle-modern mb-0">Peta sebaran wilayah dengan titik indikator performa SLA</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <span id="mapLocationCounter" class="text-muted small fw-bold">0/0 lokasi tampil</span>
+            </div>
+          </div>
+          <div id="slaMap"></div>
+        </div>
+      </div>
+
+      <!-- Tabel Ringkasan % SLA per Lokasi Tujuan (Kanan) -->
+      <div class="col-xl-4">
+        <div class="modern-card p-4 h-100 d-flex flex-column">
+          <div class="mb-3">
+            <h6 class="card-title-modern mb-1">RINGKASAN % SLA PER LOKASI TUJUAN</h6>
+            <p class="card-subtitle-modern mb-0">Urutan peringkat lokasi berdasarkan kepatuhan SLA</p>
+          </div>
+          <div class="table-responsive summary-table-container flex-grow-1 border rounded-3">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th class="ps-3">Lokasi Tujuan</th>
+                  <th class="text-center">Resi</th>
+                  <th class="text-end pe-3">% SLA Tercapai</th>
+                </tr>
+              </thead>
+              <tbody id="summaryTableBody">
+                <!-- Diisi secara dinamis via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Tren Performa SLA Berdasarkan Tanggal (Time Series Line Chart) -->
+    <div class="row g-4 mb-4">
+      <div class="col-12">
+        <div class="modern-card p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+              <h6 class="card-title-modern mb-1"><i class="bi bi-graph-up-arrow text-success me-1"></i> Tren Pencapaian % SLA Berdasarkan Tanggal</h6>
+              <p class="card-subtitle-modern mb-0">Grafik perkembangan persentase ketepatan waktu pengiriman harian</p>
+            </div>
+            <span class="badge bg-light text-success border">Time Series Analytics</span>
+          </div>
+          <div class="chart-wrapper-wide">
+            <canvas id="chartSlaTrend"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 5: Performa Rute & Vendor (Top 10, Trip > 5) -->
+    <div class="row g-4 mb-4">
+      <!-- Rute Terbaik & Terjelek -->
+      <div class="col-lg-6">
+        <div class="modern-card p-4 h-100">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+              <h6 class="card-title-modern mb-1">Performa Rute (% SLA Tercapai)</h6>
+              <p class="card-subtitle-modern mb-0">Peringkat rute dengan trip > 5 (Tertinggi vs Terendah)</p>
+            </div>
+            <ul class="nav nav-pills nav-pills-modern" id="ruteTab">
+              <li class="nav-item">
+                <button class="nav-link active best" data-type="best" onclick="switchRuteMode('best', this)">
+                  <i class="bi bi-trophy me-1"></i>Terbaik
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link worst" data-type="worst" onclick="switchRuteMode('worst', this)">
+                  <i class="bi bi-graph-down-arrow me-1"></i>Terjelek
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="chart-wrapper" style="height: 320px;">
+            <canvas id="chartRuteRank"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vendor Terbaik & Terjelek -->
+      <div class="col-lg-6">
+        <div class="modern-card p-4 h-100">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+              <h6 class="card-title-modern mb-1">Performa Vendor (% SLA Tercapai)</h6>
+              <p class="card-subtitle-modern mb-0">Peringkat vendor dengan trip > 5 (Tertinggi vs Terendah)</p>
+            </div>
+            <ul class="nav nav-pills nav-pills-modern" id="vendorTab">
+              <li class="nav-item">
+                <button class="nav-link active best" data-type="best" onclick="switchVendorMode('best', this)">
+                  <i class="bi bi-award me-1"></i>Terbaik
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link worst" data-type="worst" onclick="switchVendorMode('worst', this)">
+                  <i class="bi bi-exclamation-octagon me-1"></i>Terjelek
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="chart-wrapper" style="height: 320px;">
+            <canvas id="chartVendorRank"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 6: Performa Driver & Nopol (Top 20, Trip > 7) -->
+    <div class="row g-4 mb-4">
+      <!-- Driver Terbaik & Terburuk (Top 20, Trip > 7) -->
+      <div class="col-lg-6">
+        <div class="modern-card p-4 h-100">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+              <h6 class="card-title-modern mb-1">Performa Driver (% SLA Tercapai)</h6>
+              <p class="card-subtitle-modern mb-0">Top 20 Driver dengan trip > 5 (Tertinggi vs Terendah)</p>
+            </div>
+            <ul class="nav nav-pills nav-pills-modern" id="driverTab">
+              <li class="nav-item">
+                <button class="nav-link active best" data-type="best" onclick="switchDriverMode('best', this)">
+                  <i class="bi bi-person-badge me-1"></i>Terbaik
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link worst" data-type="worst" onclick="switchDriverMode('worst', this)">
+                  <i class="bi bi-person-dash me-1"></i>Terburuk
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="chart-wrapper-tall">
+            <canvas id="chartDriverRank"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nopol Terbaik & Terburuk (Top 20, Trip > 7) -->
+      <div class="col-lg-6">
+        <div class="modern-card p-4 h-100">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div>
+              <h6 class="card-title-modern mb-1">Performa Nopol Armada (% SLA Tercapai)</h6>
+              <p class="card-subtitle-modern mb-0">Top 20 Nopol Kendaraan dengan trip > 5 (Tertinggi vs Terendah)</p>
+            </div>
+            <ul class="nav nav-pills nav-pills-modern" id="nopolTab">
+              <li class="nav-item">
+                <button class="nav-link active best" data-type="best" onclick="switchNopolMode('best', this)">
+                  <i class="bi bi-truck-front me-1"></i>Terbaik
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link worst" data-type="worst" onclick="switchNopolMode('worst', this)">
+                  <i class="bi bi-exclamation-triangle me-1"></i>Terburuk
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="chart-wrapper-tall">
+            <canvas id="chartNopolRank"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 7: Modern Data Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="modern-card p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+              <h6 class="card-title-modern mb-1">Detail Log Pengiriman & SLA</h6>
+              <p class="card-subtitle-modern mb-0">Tabel interaktif lengkap dengan fitur pencarian, pengurutan, dan filter cepat</p>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table id="shipmentTable" class="table table-hover table-modern w-100">
+              <thead>
+                <tr>
+                  <th>Tanggal Kedatangan</th>
+                  <th>Resi Tugas</th>
+                  <th>Nama Tugas</th>
+                  <th>Rute</th>
+                  <th>Wilayah Tujuan</th>
+                  <th>Lokasi Tujuan</th>
+                  <th>Vendor</th>
+                  <th>Nama Driver</th>
+                  <th>Status Driver</th>
+                  <th>Nopol</th>
+                  <th>Jenis Kendaraan</th>
+                  <th>Status Kendaraan</th>
+                  <th>Waktu Berangkat</th>
+                  <th>Waktu Datang</th>
+                  <th>Durasi SLA</th>
+                  <th>Aktual SLA</th>
+                  <th>Selisih Waktu</th>
+                  <th>SLA Tercapai</th>
+                  <th>Kategori Denda</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+  <script>
+    let allRecords = [];
+    let filteredRecords = [];
+    
+    let chartWilayah = null;
+    let chartStatus = null;
+    let chartSlaTrend = null;
+    let chartRute = null;
+    let chartVendor = null;
+    let chartDriver = null;
+    let chartNopol = null;
+    let dataTable = null;
+    
+    let map = null;
+    let markersLayer = null;
+
+    let ruteMode = 'best';
+    let vendorMode = 'best';
+    let driverMode = 'best';
+    let nopolMode = 'best';
+
+    const CITY_COORDS = {
+      'jakarta': [-6.2088, 106.8456],
+      'jakarta barat': [-6.1674, 106.7637],
+      'jakarta timur': [-6.2250, 106.9004],
+      'jakarta selatan': [-6.2615, 106.8106],
+      'jakarta utara': [-6.1384, 106.8639],
+      'jakarta pusat': [-6.1805, 106.8284],
+      'bogor': [-6.5971, 106.8060],
+      'depok': [-6.4025, 106.7942],
+      'tangerang': [-6.1702, 106.6403],
+      'tangerang selatan': [-6.2886, 106.7179],
+      'bekasi': [-6.2383, 106.9756],
+      'cikarang': [-6.2615, 107.1526],
+      'karawang': [-6.3227, 107.3376],
+      'purwakarta': [-6.5569, 107.4433],
+      'subang': [-6.5716, 107.7587],
+      'bandung': [-6.9175, 107.6191],
+      'cimahi': [-6.8841, 107.5413],
+      'sumedang': [-6.8381, 107.9275],
+      'garut': [-7.2279, 107.9087],
+      'tasikmalaya': [-7.3506, 108.2172],
+      'cirebon': [-6.7320, 108.5523],
+      'indramayu': [-6.3373, 108.3258],
+      'majalengka': [-6.8364, 108.2279],
+      'kuningan': [-6.9759, 108.4831],
+      'serang': [-6.1104, 106.1640],
+      'cilegon': [-6.0025, 106.0112],
+      'semarang': [-6.9667, 110.4167],
+      'solo': [-7.5755, 110.8243],
+      'surakarta': [-7.5755, 110.8243],
+      'yogyakarta': [-7.7956, 110.3695],
+      'jogja': [-7.7956, 110.3695],
+      'magelang': [-7.4797, 110.2177],
+      'tegal': [-6.8797, 109.1256],
+      'pekalongan': [-6.8898, 109.6746],
+      'purwokerto': [-7.4243, 109.2391],
+      'cilacap': [-7.7188, 109.0159],
+      'kudus': [-6.8048, 110.8405],
+      'pati': [-6.7559, 111.0380],
+      'surabaya': [-7.2575, 112.7521],
+      'sidoarjo': [-7.4478, 112.7183],
+      'gresik': [-7.1568, 112.6555],
+      'malang': [-7.9666, 112.6326],
+      'pasuruan': [-7.6469, 112.8999],
+      'mojokerto': [-7.4705, 112.4401],
+      'kediri': [-7.8480, 112.0178],
+      'madiun': [-7.6298, 111.5239],
+      'jember': [-8.1845, 113.6681],
+      'banyuwangi': [-8.2192, 114.3691],
+      'denpasar': [-8.6705, 115.2126],
+      'bali': [-8.4095, 115.1889],
+      'mataram': [-8.5833, 116.1167],
+      'kupang': [-10.1772, 123.6070],
+      'medan': [3.5952, 98.6722],
+      'binjai': [3.6001, 98.4854],
+      'pematangsiantar': [2.9700, 99.0682],
+      'pekanbaru': [0.5071, 101.4478],
+      'dumai': [1.6671, 101.4432],
+      'batam': [1.0456, 104.0305],
+      'padang': [-0.9471, 100.4172],
+      'jambi': [-1.6101, 103.6131],
+      'palembang': [-2.9761, 104.7754],
+      'bengkulu': [-3.7928, 102.2608],
+      'lampung': [-5.4292, 105.2610],
+      'bandar lampung': [-5.4292, 105.2610],
+      'pontianak': [-0.0263, 109.3425],
+      'banjarmasin': [-3.3186, 114.5944],
+      'balikpapan': [-1.2379, 116.8529],
+      'samarinda': [-0.5022, 117.1536],
+      'makassar': [-5.1477, 119.4327],
+      'palu': [-0.9003, 119.8780],
+      'kendari': [-3.9985, 122.5129],
+      'manado': [1.4748, 124.8421],
+      'gorontalo': [0.5435, 123.0568],
+      'ambon': [-3.6954, 128.1814],
+      'jayapura': [-2.5916, 140.6690],
+      'sukabumi': [-6.9277, 106.9300],
+      'banjar': [-7.3672, 108.5308],
+      'soreang': [-7.0289, 107.5350],
+      'mundu': [-6.7611, 108.6142],
+      'cianjur': [-6.8163, 107.1422],
+      'haurwangi': [-6.8242, 107.3121]
+    };
+
+    function isSlaMet(val) {
+      if (!val) return false;
+      const v = String(val).toLowerCase().trim();
+      return ['ya', 'yes', 'tercapai', 'on time', 'ontime', '1', 'true', 'ok', 'sesuai'].includes(v) || 
+             (v.includes('tercapai') && !v.includes('tidak'));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      loadData();
+
+      document.getElementById('startDate').addEventListener('change', applyFilters);
+      document.getElementById('endDate').addEventListener('change', applyFilters);
+      document.getElementById('filterWilayah').addEventListener('change', applyFilters);
+      document.getElementById('filterVendor').addEventListener('change', applyFilters);
+      document.getElementById('filterStatusKendaraan').addEventListener('change', applyFilters);
+      document.getElementById('filterSla').addEventListener('change', applyFilters);
+
+      document.getElementById('btnReset').addEventListener('click', () => {
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        document.getElementById('filterWilayah').value = 'ALL';
+        document.getElementById('filterVendor').value = 'ALL';
+        document.getElementById('filterStatusKendaraan').value = 'ALL';
+        document.getElementById('filterSla').value = 'ALL';
+        applyFilters();
+      });
+    });
+
+    function loadData() {
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById('loadingOverlay').style.display = 'none';
+          if (res.error) {
+            alert('Error: ' + res.error);
+            return;
+          }
+          allRecords = res.records || [];
+          populateFilterDropdowns(allRecords);
+          applyFilters();
+        })
+        .withFailureHandler(err => {
+          document.getElementById('loadingOverlay').style.display = 'none';
+          alert('Gagal memuat data: ' + err);
+        })
+        .getDashboardData();
+    }
+
+    function populateFilterDropdowns(data) {
+      const fillSelect = (elementId, fieldKey) => {
+        const select = document.getElementById(elementId);
+        select.length = 1;
+        const uniqueVals = new Set(
+          data.map(d => d[fieldKey]).filter(v => v && v !== '-' && v !== 'Tidak Diketahui')
+        );
+        Array.from(uniqueVals).sort().forEach(val => {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = val;
+          select.appendChild(opt);
+        });
+      };
+
+      fillSelect('filterWilayah', 'wilayah');
+      fillSelect('filterVendor', 'vendor');
+      fillSelect('filterStatusKendaraan', 'statusKendaraan');
+    }
+
+    function applyFilters() {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      const wilayah = document.getElementById('filterWilayah').value;
+      const vendor = document.getElementById('filterVendor').value;
+      const statusKendaraan = document.getElementById('filterStatusKendaraan').value;
+      const slaFilter = document.getElementById('filterSla').value;
+
+      filteredRecords = allRecords.filter(item => {
+        if (wilayah !== 'ALL' && item.wilayah !== wilayah) return false;
+        if (vendor !== 'ALL' && item.vendor !== vendor) return false;
+        if (statusKendaraan !== 'ALL' && item.statusKendaraan !== statusKendaraan) return false;
+        
+        if (slaFilter === 'MET' && !isSlaMet(item.slaTercapai)) return false;
+        if (slaFilter === 'NOT_MET' && isSlaMet(item.slaTercapai)) return false;
+
+        if (start && item.tanggal && item.tanggal < start) return false;
+        if (end && item.tanggal && item.tanggal > end) return false;
+        return true;
+      });
+
+      updateKPIs(filteredRecords);
+      renderWilayahDoughnut(filteredRecords);
+      renderStatusPie(filteredRecords);
+      renderMapAndSummary(filteredRecords);
+      renderSlaTrendChart(filteredRecords);
+      renderRuteChart(filteredRecords);
+      renderVendorChart(filteredRecords);
+      renderDriverChart(filteredRecords);
+      renderNopolChart(filteredRecords);
+      renderTable(filteredRecords);
+    }
+
+    function updateKPIs(data) {
+      const total = data.length;
+      const metCount = data.filter(d => isSlaMet(d.slaTercapai)).length;
+      const notMetCount = total - metCount;
+      
+      const slaPct = total > 0 ? ((metCount / total) * 100).toFixed(1) : '0.0';
+      const notMetPct = total > 0 ? ((notMetCount / total) * 100).toFixed(1) : '0.0';
+
+      const uniqueNopol = new Set(data.map(d => d.nopol).filter(n => n && n !== '-')).size;
+      const uniqueVendor = new Set(data.map(d => d.vendor).filter(v => v && v !== '-')).size;
+
+      document.getElementById('kpiTotalTrip').textContent = total.toLocaleString('id-ID');
+      document.getElementById('kpiSlaRate').textContent = `${slaPct}%`;
+      document.getElementById('kpiSlaCount').textContent = `${metCount.toLocaleString('id-ID')} dari ${total.toLocaleString('id-ID')} tepat waktu`;
+      
+      document.getElementById('kpiNotMetRate').textContent = `${notMetPct}%`;
+      document.getElementById('kpiNotMetCount').textContent = `${notMetCount.toLocaleString('id-ID')} dari ${total.toLocaleString('id-ID')} trip meleset`;
+
+      document.getElementById('kpiActiveFleet').textContent = `${uniqueNopol.toLocaleString('id-ID')} Unit`;
+      document.getElementById('kpiVendorCount').textContent = `${uniqueVendor.toLocaleString('id-ID')} Vendor beroperasi`;
+    }
+
+    function renderWilayahDoughnut(data) {
+      const counts = {};
+      data.forEach(d => {
+        counts[d.wilayah] = (counts[d.wilayah] || 0) + 1;
+      });
+
+      const labels = Object.keys(counts);
+      const values = Object.values(counts);
+      const palette = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#64748b'];
+
+      const ctx = document.getElementById('chartWilayahDoughnut').getContext('2d');
+      if (chartWilayah) chartWilayah.destroy();
+
+      chartWilayah = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: palette,
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '64%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { usePointStyle: true, padding: 15, font: { size: 12 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = ((ctx.raw / total) * 100).toFixed(1);
+                  return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderStatusPie(data) {
+      const counts = {};
+      data.forEach(d => {
+        counts[d.statusKendaraan] = (counts[d.statusKendaraan] || 0) + 1;
+      });
+
+      const labels = Object.keys(counts);
+      const values = Object.values(counts);
+      const palette = ['#0ea5e9', '#10b981', '#f43f5e', '#f59e0b', '#6366f1', '#14b8a6', '#8b5cf6'];
+
+      const ctx = document.getElementById('chartStatusPie').getContext('2d');
+      if (chartStatus) chartStatus.destroy();
+
+      chartStatus = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: palette,
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { usePointStyle: true, padding: 15, font: { size: 12 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = ((ctx.raw / total) * 100).toFixed(1);
+                  return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function initMap() {
+      map = L.map('slaMap').setView([-2.5489, 118.0149], 5);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+    }
+
+    function getCoordsForLocation(locName) {
+      if (!locName) return null;
+      const key = locName.toLowerCase().trim();
+      if (CITY_COORDS[key]) return CITY_COORDS[key];
+      
+      for (const city in CITY_COORDS) {
+        if (key.includes(city)) {
+          return CITY_COORDS[city];
+        }
+      }
+      return null;
+    }
+
+    function renderMapAndSummary(data) {
+      markersLayer.clearLayers();
+      const locStats = {};
+
+      data.forEach(d => {
+        if (!d.lokasi || d.lokasi === 'Tidak Diketahui') return;
+        if (!locStats[d.lokasi]) {
+          locStats[d.lokasi] = { total: 0, met: 0 };
+        }
+        locStats[d.lokasi].total++;
+        if (isSlaMet(d.slaTercapai)) locStats[d.lokasi].met++;
+      });
+
+      const summaryArray = Object.keys(locStats).map(loc => {
+        const stats = locStats[loc];
+        const pct = parseFloat(((stats.met / stats.total) * 100).toFixed(1));
+        return { loc: loc, total: stats.total, met: stats.met, pct: pct };
+      });
+
+      summaryArray.sort((a, b) => b.pct - a.pct || b.total - a.total);
+
+      const totalLocCount = summaryArray.length;
+      document.getElementById('mapLocationCounter').textContent = `${totalLocCount}/${totalLocCount} lokasi tampil`;
+
+      const tbody = document.getElementById('summaryTableBody');
+      tbody.innerHTML = summaryArray.map(item => {
+        let badgeClass = 'badge-soft-success';
+        if (item.pct < 75) badgeClass = 'badge-soft-danger';
+        else if (item.pct < 90) badgeClass = 'badge-soft-warning';
+
+        return `
+          <tr>
+            <td class="ps-3 fw-medium text-dark">${item.loc}</td>
+            <td class="text-center text-muted">${item.total}</td>
+            <td class="text-end pe-3"><span class="${badgeClass}">${item.pct}%</span></td>
+          </tr>
+        `;
+      }).join('') || `<tr><td colspan="3" class="text-center text-muted py-3">Tidak ada data lokasi</td></tr>`;
+
+      const bounds = [];
+      summaryArray.forEach(item => {
+        const coords = getCoordsForLocation(item.loc);
+        if (!coords) return;
+
+        let color = '#ef4444';
+        if (item.pct >= 90) color = '#10b981';
+        else if (item.pct >= 75) color = '#f59e0b';
+
+        const radius = Math.min(Math.max(item.total * 0.8, 7), 22);
+
+        const circle = L.circleMarker(coords, {
+          radius: radius,
+          fillColor: color,
+          color: '#ffffff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.85
+        });
+
+        circle.bindTooltip(`${item.loc} (${item.pct}%)`, {
+          permanent: true,
+          direction: 'top',
+          className: 'map-label-tooltip',
+          offset: [0, -4]
+        });
+
+        circle.bindPopup(`
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; min-width: 170px;">
+            <strong style="font-size: 13px; color: #0f172a;">${item.loc}</strong>
+            <hr style="margin: 6px 0; border-color: #e2e8f0;">
+            <div style="font-size: 12px; color: #475569;">
+              SLA Tercapai: <strong style="color: ${color}; font-size: 14px;">${item.pct}%</strong><br>
+              Tepat Waktu: <b>${item.met}</b> / ${item.total} resi
+            </div>
+          </div>
+        `);
+
+        circle.addTo(markersLayer);
+        bounds.push(coords);
+      });
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 10 });
+      }
+    }
+
+    // Grafik Tren SLA Berdasarkan Tanggal (Time Series Line Chart)
+    function renderSlaTrendChart(data) {
+      const dateStats = {};
+      data.forEach(d => {
+        const tgl = d.tanggal;
+        if (!tgl || tgl === '-' || tgl === 'Tidak Diketahui') return;
+        if (!dateStats[tgl]) dateStats[tgl] = { total: 0, met: 0 };
+        dateStats[tgl].total++;
+        if (isSlaMet(d.slaTercapai)) dateStats[tgl].met++;
+      });
+
+      // Urutkan berdasarkan tanggal ascending
+      const sortedDates = Object.keys(dateStats).sort();
+      const percentages = sortedDates.map(tgl => {
+        const item = dateStats[tgl];
+        return item.total > 0 ? parseFloat(((item.met / item.total) * 100).toFixed(1)) : 0;
+      });
+      const totals = sortedDates.map(tgl => dateStats[tgl].total);
+
+      const ctx = document.getElementById('chartSlaTrend').getContext('2d');
+      if (chartSlaTrend) chartSlaTrend.destroy();
+
+      chartSlaTrend = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: sortedDates,
+          datasets: [{
+            label: 'SLA Tercapai (%)',
+            data: percentages,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#10b981',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              grid: { color: '#f1f5f9' },
+              ticks: { font: { size: 11 } }
+            },
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: val => val + '%' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => `Tanggal: ${items[0].label}`,
+                label: (ctx) => {
+                  const idx = ctx.dataIndex;
+                  const totalTrip = totals[idx];
+                  return ` SLA Tercapai: ${ctx.raw}% (${totalTrip} trip)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function calculateTopBottom(data, fieldKey, mode, minTrip = 5, limitCount = 10) {
+      const stats = {};
+      data.forEach(d => {
+        const key = d[fieldKey];
+        if (!key || key === 'Tidak Diketahui' || key === '-') return;
+        if (!stats[key]) stats[key] = { name: key, total: 0, met: 0 };
+        stats[key].total++;
+        if (isSlaMet(d.slaTercapai)) stats[key].met++;
+      });
+
+      const list = Object.values(stats)
+        .filter(item => item.total > minTrip)
+        .map(item => ({
+          name: item.name,
+          total: item.total,
+          met: item.met,
+          pct: parseFloat(((item.met / item.total) * 100).toFixed(1))
+        }));
+
+      if (mode === 'best') {
+        list.sort((a, b) => b.pct - a.pct || b.total - a.total);
+      } else {
+        list.sort((a, b) => a.pct - b.pct || b.total - a.total);
+      }
+
+      return list.slice(0, limitCount);
+    }
+
+    function switchRuteMode(mode, btn) {
+      ruteMode = mode;
+      document.querySelectorAll('#ruteTab .nav-link').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+      renderRuteChart(filteredRecords);
+    }
+
+    function renderRuteChart(data) {
+      const ranked = calculateTopBottom(data, 'rute', ruteMode, 5, 10);
+      const labels = ranked.map(r => r.name.length > 26 ? r.name.substring(0, 26) + '...' : r.name);
+      const values = ranked.map(r => r.pct);
+      const barColor = ruteMode === 'best' ? '#10b981' : '#ef4444';
+
+      const ctx = document.getElementById('chartRuteRank').getContext('2d');
+      if (chartRute) chartRute.destroy();
+
+      chartRute = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'SLA Tercapai (%)',
+            data: values,
+            backgroundColor: barColor,
+            borderRadius: 6,
+            barThickness: 18
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: val => val + '%' }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { size: 11 } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => ranked[items[0].dataIndex].name,
+                label: (ctx) => {
+                  const item = ranked[ctx.dataIndex];
+                  return ` SLA Tercapai: ${item.pct}% (${item.met}/${item.total} trip)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function switchVendorMode(mode, btn) {
+      vendorMode = mode;
+      document.querySelectorAll('#vendorTab .nav-link').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+      renderVendorChart(filteredRecords);
+    }
+
+    function renderVendorChart(data) {
+      const ranked = calculateTopBottom(data, 'vendor', vendorMode, 5, 10);
+      const labels = ranked.map(v => v.name.length > 26 ? v.name.substring(0, 26) + '...' : v.name);
+      const values = ranked.map(v => v.pct);
+      const barColor = vendorMode === 'best' ? '#2563eb' : '#f97316';
+
+      const ctx = document.getElementById('chartVendorRank').getContext('2d');
+      if (chartVendor) chartVendor.destroy();
+
+      chartVendor = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'SLA Tercapai (%)',
+            data: values,
+            backgroundColor: barColor,
+            borderRadius: 6,
+            barThickness: 18
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: val => val + '%' }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { size: 11 } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => ranked[items[0].dataIndex].name,
+                label: (ctx) => {
+                  const item = ranked[ctx.dataIndex];
+                  return ` SLA Tercapai: ${item.pct}% (${item.met}/${item.total} trip)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function switchDriverMode(mode, btn) {
+      driverMode = mode;
+      document.querySelectorAll('#driverTab .nav-link').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+      renderDriverChart(filteredRecords);
+    }
+
+    function renderDriverChart(data) {
+      const ranked = calculateTopBottom(data, 'driver', driverMode, 5, 20);
+      const labels = ranked.map(d => d.name.length > 24 ? d.name.substring(0, 24) + '...' : d.name);
+      const values = ranked.map(d => d.pct);
+      const barColor = driverMode === 'best' ? '#14b8a6' : '#f43f5e';
+
+      const ctx = document.getElementById('chartDriverRank').getContext('2d');
+      if (chartDriver) chartDriver.destroy();
+
+      chartDriver = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'SLA Tercapai (%)',
+            data: values,
+            backgroundColor: barColor,
+            borderRadius: 5,
+            barThickness: 14
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: val => val + '%' }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => ranked[items[0].dataIndex].name,
+                label: (ctx) => {
+                  const item = ranked[ctx.dataIndex];
+                  return ` SLA Tercapai: ${item.pct}% (${item.met}/${item.total} trip)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function switchNopolMode(mode, btn) {
+      nopolMode = mode;
+      document.querySelectorAll('#nopolTab .nav-link').forEach(el => el.classList.remove('active'));
+      btn.classList.add('active');
+      renderNopolChart(filteredRecords);
+    }
+
+    function renderNopolChart(data) {
+      const ranked = calculateTopBottom(data, 'nopol', nopolMode, 5, 20);
+      const labels = ranked.map(n => n.name.length > 24 ? n.name.substring(0, 24) + '...' : n.name);
+      const values = ranked.map(n => n.pct);
+      const barColor = nopolMode === 'best' ? '#8b5cf6' : '#eab308';
+
+      const ctx = document.getElementById('chartNopolRank').getContext('2d');
+      if (chartNopol) chartNopol.destroy();
+
+      chartNopol = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'SLA Tercapai (%)',
+            data: values,
+            backgroundColor: barColor,
+            borderRadius: 5,
+            barThickness: 14
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: val => val + '%' }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { size: 10 } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items) => ranked[items[0].dataIndex].name,
+                label: (ctx) => {
+                  const item = ranked[ctx.dataIndex];
+                  return ` SLA Tercapai: ${item.pct}% (${item.met}/${item.total} trip)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTable(data) {
+      if (dataTable) {
+        dataTable.destroy();
+      }
+
+      const tbody = document.querySelector('#shipmentTable tbody');
+      tbody.innerHTML = data.map(row => {
+        const met = isSlaMet(row.slaTercapai);
+        const slaBadge = met 
+          ? `<span class="badge-soft-success"><i class="bi bi-check-circle-fill me-1"></i>${row.slaTercapai || 'Tercapai'}</span>`
+          : `<span class="badge-soft-danger"><i class="bi bi-x-circle-fill me-1"></i>${row.slaTercapai || 'Tidak'}</span>`;
+
+        const hasDenda = row.kategoriDenda && row.kategoriDenda !== '-' && row.kategoriDenda.toLowerCase() !== 'tidak ada';
+        const dendaBadge = hasDenda
+          ? `<span class="badge-soft-warning">${row.kategoriDenda}</span>`
+          : `<span class="text-muted">-</span>`;
+
+        return `
+          <tr>
+            <td>${row.tanggal}</td>
+            <td class="fw-semibold text-primary">${row.resi}</td>
+            <td>${row.namaTugas}</td>
+            <td>${row.rute}</td>
+            <td>${row.wilayah}</td>
+            <td>${row.lokasi}</td>
+            <td class="fw-medium">${row.vendor}</td>
+            <td>${row.driver}</td>
+            <td>${row.statusDriver}</td>
+            <td><span class="badge bg-light text-dark border">${row.nopol}</span></td>
+            <td>${row.jenisKendaraan}</td>
+            <td>${row.statusKendaraan}</td>
+            <td>${row.waktuBerangkat}</td>
+            <td>${row.waktuDatang}</td>
+            <td>${row.durasiSla}</td>
+            <td>${row.aktualSla}</td>
+            <td>${row.selisihWaktu}</td>
+            <td>${slaBadge}</td>
+            <td>${dendaBadge}</td>
+          </tr>
+        `;
+      }).join('');
+
+      dataTable = $('#shipmentTable').DataTable({
+        pageLength: 10,
+        lengthMenu: [10, 25, 50, 100],
+        order: [[0, 'desc']],
+        language: {
+          search: "Cari Data:",
+          lengthMenu: "Tampilkan _MENU_ baris",
+          info: "Menampilkan _START_ - _END_ dari _TOTAL_ pengiriman",
+          paginate: { previous: "Sebelumnya", next: "Berikutnya" },
+          zeroRecords: "Tidak ada data yang cocok dengan filter"
+        }
+      });
+    }
+  </script>
+</body>
+</html>
